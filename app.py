@@ -13,9 +13,9 @@ from deepface import DeepFace
 from streamlit_geolocation import streamlit_geolocation
 
 # --- CONFIGURATION ---
-CLASSROOM_LAT = 29.871713716384658       # Replace with your test location latitude
-CLASSROOM_LON = 77.89413431542066      # Replace with your test location longitude
-ALLOWED_RADIUS_METERS = 150.0 # Use 150m for laptop Wi-Fi GPS; tighten to 40-50m on phones
+CLASSROOM_LAT = 29.871713716384658       # Replace with your classroom latitude
+CLASSROOM_LON = 77.89413431542066        # Replace with your classroom longitude
+ALLOWED_RADIUS_METERS = 150.0 # Tighten to 50.0m once testing on phones in class
 SPOOF_SCORE_LIMIT = 45        # Blocks phone/tablet screens at >= 45/100 spoof risk
 FACE_MATCH_LIMIT = 0.58       # Cosine distance threshold for eye-aligned SFace crops
 FACES_DIR = "registered_faces"
@@ -113,7 +113,6 @@ def detect_screen_spoof(img_bgr, face_bbox):
     edges = cv2.Canny(cv2.GaussianBlur(gray, (5, 5), 0), 45, 135)
     border_edges = np.zeros_like(edges)
     border_edges[oy1:oy2, ox1:ox2] = edges[oy1:oy2, ox1:ox2]
-    # Zero out inner face + glasses region so only the outer head/phone border is inspected
     ix1, iy1 = max(0, fx1 - int(face_w * 0.08)), max(0, fy1 - int(face_h * 0.08))
     ix2, iy2 = min(w, fx2 + int(face_w * 0.08)), min(h, fy2 + int(face_h * 0.08))
     border_edges[iy1:iy2, ix1:ix2] = 0
@@ -125,7 +124,6 @@ def detect_screen_spoof(img_bgr, face_bbox):
         for line in lines:
             x1_l, y1_l, x2_l, y2_l = line[0]
             angle = abs(math.degrees(math.atan2(y2_l - y1_l, x2_l - x1_l)))
-            # Count near-vertical (65-115 deg) or near-horizontal (0-25 / 155-180 deg) phone edges
             if (65 <= angle <= 115) or (angle <= 25) or (angle >= 155):
                 straight_count += 1
 
@@ -210,8 +208,9 @@ def analyze_face(image_pil):
 
         lm = results.multi_face_landmarks[0].landmark
 
+        # Scale coordinates by (w, h) so portrait mobile cameras & landscape laptops match identically
         def ear(idx):
-            p = [np.array([lm[i].x, lm[i].y]) for i in idx]
+            p = [np.array([lm[i].x * w, lm[i].y * h]) for i in idx]
             v1 = np.linalg.norm(p[1] - p[5])
             v2 = np.linalg.norm(p[2] - p[4])
             h_dist = np.linalg.norm(p[0] - p[3])
@@ -219,8 +218,8 @@ def analyze_face(image_pil):
 
         avg_ear = (ear([33, 160, 158, 133, 153, 144]) + ear([362, 385, 387, 263, 373, 380])) / 2.0
 
-        lip_v = np.linalg.norm(np.array([lm[13].x, lm[13].y]) - np.array([lm[14].x, lm[14].y]))
-        lip_h = np.linalg.norm(np.array([lm[78].x, lm[78].y]) - np.array([lm[308].x, lm[308].y]))
+        lip_v = np.linalg.norm(np.array([lm[13].x * w, lm[13].y * h]) - np.array([lm[14].x * w, lm[14].y * h]))
+        lip_h = np.linalg.norm(np.array([lm[78].x * w, lm[78].y * h]) - np.array([lm[308].x * w, lm[308].y * h]))
         mar = lip_v / (lip_h + 1e-6)
 
         eye_mid_x = (lm[133].x + lm[362].x) / 2.0
@@ -359,18 +358,18 @@ if st.button("Mark Attendance", type="primary"):
                     if max_spoof >= SPOOF_SCORE_LIMIT:
                         st.error(f"Phone / Screen Spoof Blocked! (Risk: {max_spoof}/100 — {', '.join(all_reasons)})")
                     else:
-                        neutral_ok = (pose1["ear"] >= 0.20) and (pose1["mar"] < 0.38) and (pose1["nose_shift"] <= 0.25)
+                        neutral_ok = (pose1["ear"] >= 0.19) and (pose1["mar"] < 0.35) and (pose1["nose_shift"] <= 0.28)
 
                         ch = st.session_state.challenge
                         if ch == "BLINK":
-                            challenge_ok = pose2["ear"] < 0.21
+                            challenge_ok = pose2["ear"] < 0.18
                         elif ch == "MOUTH":
-                            challenge_ok = pose2["mar"] >= 0.42
+                            challenge_ok = pose2["mar"] >= 0.45
                         else:
                             challenge_ok = pose2["nose_shift"] >= 0.38
 
                         if not neutral_ok:
-                            st.error("Photo 1 failed: Look straight ahead with eyes open and mouth closed.")
+                            st.error(f"Photo 1 failed (Eyes: {pose1['ear']:.2f}, Mouth: {pose1['mar']:.2f}, Turn: {pose1['nose_shift']:.2f}). Hold phone at eye level with eyes open and mouth closed.")
                         elif not challenge_ok:
                             st.error(f"Liveness check failed! You did not complete: {CHALLENGES[ch]}.")
                         else:
