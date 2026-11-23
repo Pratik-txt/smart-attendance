@@ -2,7 +2,7 @@ import os
 import math
 import random
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import cv2
 import numpy as np
 import pandas as pd
@@ -53,7 +53,8 @@ def init_sqlite():
     conn.close()
 
 def save_attendance(student_id, lat, lon, distance_m):
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ist = timezone(timedelta(hours=5, minutes=30))
+    timestamp = datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S")
     record = pd.DataFrame([{
         "student_id": student_id,
         "timestamp": timestamp,
