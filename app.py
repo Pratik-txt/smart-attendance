@@ -54,7 +54,7 @@ def init_sqlite():
 
 def save_attendance(student_id, lat, lon, distance_m):
     ist = timezone(timedelta(hours=5, minutes=30))
-    timestamp = datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now(ist).strftime("%Y-%m-%d %I:%M:%S %p")
     record = pd.DataFrame([{
         "student_id": student_id,
         "timestamp": timestamp,
