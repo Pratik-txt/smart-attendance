@@ -13,8 +13,8 @@ from deepface import DeepFace
 from streamlit_geolocation import streamlit_geolocation
 
 # --- CONFIGURATION ---
-CLASSROOM_LAT = 29.871713716384658       # Replace with your classroom latitude
-CLASSROOM_LON = 77.89413431542066        # Replace with your classroom longitude
+CLASSROOM_LAT = 29.870309763764837       # Replace with your classroom latitude
+CLASSROOM_LON = 77.89623227358898        # Replace with your classroom longitude
 ALLOWED_RADIUS_METERS = 150.0 # Tighten to 50.0m once testing on phones in class
 SPOOF_SCORE_LIMIT = 45        # Blocks phone/tablet screens at >= 45/100 spoof risk
 FACE_MATCH_LIMIT = 0.58       # Cosine distance threshold for eye-aligned SFace crops
